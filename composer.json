@@ -1,0 +1,25 @@
+{
+  "name": "vendor_name/package_name",
+  "description": "description_text",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "author's name",
+      "email": "email@example.com"
+    }
+  ],
+  "repositories": [
+    {"type": "composer", "url": "https://packagist.phpcomposer.com"},
+    {"packagist": false}
+  ],
+  "require": {
+    "monolog/monolog": "1.15.0",
+    "pimple/pimple": "~3.0",
+    "nikic/fast-route": "^0.6.0",
+    "illuminate/database":"5.0.0",
+    "illuminate/pagination":"5.0.0",
+    "guzzlehttp/guzzle":"5.3.1",
+    "elasticsearch/elasticsearch": "~6.0"
+  }
+}
