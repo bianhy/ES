@@ -8,6 +8,7 @@
 
 namespace App\Controller;
 
+use Amber\System\Libraries\Database\DB;
 use Elasticsearch\ClientBuilder;
 
 class ElasticSearchController extends AbstractController
@@ -133,6 +134,61 @@ class ElasticSearchController extends AbstractController
     }
 
     /**
+     * 批量写入ES脚本
+     * /opt/app/php-5.6.20/bin/php /data/wwwroot/Elasticsearch/app/www/index.php -c='App\Controller\ElasticSearchController' -a=bulk
+     *  windows: 进入www目录
+     *  php index.php -c=App\Controller\ElasticSearchController -a=bulk
+     */
+    public function bulk()
+    {
+        $start_time = microtime(1);
+        $index_exist = $this->checkIndex($this->index_name);
+
+        if($index_exist){
+            //清空数据，再新建索引
+            $this->deleteIndex($this->index_name);
+        }
+
+        $this->createIndex($this->index_name,$this->type_name,$this->mapping);
+
+        $max = DB::table('message')->max('id');
+
+        $size  = 2000;
+        $count = ceil($max / $size);
+
+        echo '数据写入开始,共执行'.$count.'次'.PHP_EOL;
+
+        for ($i = 1;$i<=$count;$i++){
+            $list = DB::table('message')->whereBetween('id',[($i - 1) * $size + 1,$i * $size])->get();
+
+            echo '第'.$i.'页,每页'.$size.'条'.PHP_EOL;
+
+            $params = [];
+            foreach ($list as $value) {
+                $params['body'][] = [
+                    'index' => [
+                        '_index' => $this->index_name,
+                        '_type'  => $this->type_name,
+                        '_id'    => $value['id'],
+                    ],
+                ];
+                $params['body'][] = $value;
+            }
+            try{
+                $this->client->bulk($params);
+            }catch (\Exception $e){
+                echo '执行失败，跳过。失败原因：'.json_decode($e->getMessage(), 1).PHP_EOL;
+                continue;
+            }
+
+            echo '执行完成'.PHP_EOL;
+        }
+
+        echo '写入完成，共执行：'.$max.'条数据，耗时：'.(microtime(1) - $start_time). '秒'.PHP_EOL;
+    }
+
+
+    /**
      * 检测索引是否存在
      * @param $index
      * @return bool
@@ -156,7 +212,7 @@ class ElasticSearchController extends AbstractController
     {
         $params = [
             'index' => $index,
-            'type'  => $type,
+            //'type'  => $type,
         ];
         if ($mappings){
             $params['body'] = [
@@ -166,6 +222,19 @@ class ElasticSearchController extends AbstractController
             ];
         }
         return $this->client->indices()->create($params);
+    }
+
+    /**
+     * 删除索引
+     * @param $index
+     * @return array
+     */
+    protected function deleteIndex($index)
+    {
+        $params = [
+            'index' => $index,
+        ];
+        return $this->client->indices()->delete($params);
     }
 
     /**
@@ -319,7 +388,7 @@ class ElasticSearchController extends AbstractController
     {
 
         $options = [
-            'teacher_id' => 3140100823358888,
+            'teacher_id' => 7297,
         ];
 
         $formatSearch = $this->formatSearch($options);
@@ -338,7 +407,7 @@ class ElasticSearchController extends AbstractController
             $sort_type = 'asc';
         }
 
-        $this->dsl['sort'][] = ['id' => ['order' => 'desc']];
+        $this->dsl['sort'][] = ['id' => ['order' => 'asc']];
         $this->dsl['query'] = $query;
         $this->dsl['from'] = 0;
         $this->dsl['size'] = 20;
