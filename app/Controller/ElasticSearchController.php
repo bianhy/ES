@@ -86,6 +86,11 @@ class ElasticSearchController extends AbstractController
         ],
     ];
 
+    protected $settings = [
+        //es默认配置是10000条，导致查询10000条之后报错
+        'max_result_window'  => 2000000000,
+    ];
+
     public function __construct()
     {
         parent::__construct();
@@ -218,7 +223,8 @@ class ElasticSearchController extends AbstractController
             $params['body'] = [
                 'mappings' => [
                     $type => $mappings
-                ]
+                ],
+                'settings' => $this->settings
             ];
         }
         return $this->client->indices()->create($params);
